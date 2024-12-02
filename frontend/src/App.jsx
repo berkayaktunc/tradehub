@@ -2,35 +2,37 @@ import "./App.css";
 
 function App() {
   return (
-    <>
-      <div className="h-screen w-full flex flex-col bg-[#181A20]">
-        {/* Header */}
-        <div className="h-1/6 w-full bg-black flex justify-around items-center border-2 border-red-500">
-          <h2>HEADER HEREE</h2>
-        </div>
+    <div className="h-screen flex flex-col">
+      {/* Header */}
+      <header className="h-[10%] bg-black text-white flex items-center justify-center border-b-2 border-red-600">
+        HEADER HEREE
+      </header>
 
-        <div className="w-full h-1/5 bg-[#1E1E24] flex justify-around items-center">
-          <h2>SİDEBARR</h2>
-        </div>
+      {/* Sidebar */}
+      <div className="h-[20%] bg-gray-800 text-white flex items-center justify-center ">
+        SIDEBARR
+      </div>
 
-        <div className="h-4/5 flex flex-grow w-full">
-          {/* işlemler + Haberler */}
-          <div className="w-4/5 flex flex-col">
-            <div className="flex-grow h-3/5 flex items-center justify-center bg-[#2D2F36]">
-              <h2 className="text-white text-3xl">HABERLEERRRR</h2>
-            </div>
-            <div className="flex-grow h-1/5 flex items-center justify-center bg-red-300">
-              <h2 className="text-white text-3xl">İŞLEMLEERRR</h2>
-            </div>
-          </div>
+      <div className="flex flex-1">
+        {/* Haber & Islem */}
+        <main className="flex-1">
+          {/* Haberler */}
+          <section className="h-[70%] bg-gray-700 text-white flex items-center justify-center ">
+            HABERLEERRRR
+          </section>
 
-          {/* Terminal */}
-          <div className="w-2/5 flex items-center justify-center bg-[#2D2F36] border-l-2 border-gray-500">
-            <h2 className="text-white text-3xl">TERMINALLL</h2>
-          </div>
+          {/* Islemler */}
+          <section className="h-[30%] bg-red-800 text-white flex items-center justify-center">
+            İŞLEMLEERRRR
+          </section>
+        </main>
+
+        {/* Terminal */}
+        <div className="w-[30%] bg-gray-700 text-white flex items-center justify-center border-l-2 border-gray-600">
+          TERMINALLL
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
