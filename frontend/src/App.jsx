@@ -1,4 +1,4 @@
-import "./App.css";
+import TradeHubLogo from "./assets/TradeHubLogo";
 import PreDefined from "./components/PreDefined";
 
 function App() {
@@ -6,7 +6,7 @@ function App() {
     <div className="h-screen flex flex-col">
       {/* Header */}
       <header className="h-[7%] bg-black text-white flex items-center justify-center border-b-2 border-red-600">
-        HEADER HEREE
+        <TradeHubLogo />
       </header>
 
       {/* Sidebar */}
