@@ -1,16 +1,17 @@
 import "./App.css";
+import PreDefined from "./components/PreDefined";
 
 function App() {
   return (
     <div className="h-screen flex flex-col">
       {/* Header */}
-      <header className="h-[10%] bg-black text-white flex items-center justify-center border-b-2 border-red-600">
+      <header className="h-[7%] bg-black text-white flex items-center justify-center border-b-2 border-red-600">
         HEADER HEREE
       </header>
 
       {/* Sidebar */}
-      <div className="h-[20%] bg-gray-800 text-white flex items-center justify-center ">
-        SIDEBARR
+      <div className="h-[10%] bg-gray-800 text-white flex items-center justify-center ">
+        <PreDefined />
       </div>
 
       <div className="flex flex-1">
