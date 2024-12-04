@@ -1,5 +1,6 @@
 import TradeHubLogo from "./assets/TradeHubLogo";
 import PreDefined from "./components/PreDefined";
+import TerminalScreen from "./components/terminal/TerminalScreen";
 
 function App() {
   return (
@@ -29,8 +30,8 @@ function App() {
         </main>
 
         {/* Terminal */}
-        <div className="w-[30%] bg-gray-700 text-white flex items-center justify-center border-l-2 border-gray-600">
-          TERMINALLL
+        <div className="h-full w-[30%] bg-gray-700 text-white flex items-center justify-center border-l-2 border-gray-600">
+          <TerminalScreen />
         </div>
       </div>
     </div>
