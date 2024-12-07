@@ -5,12 +5,21 @@ const TerminalScreen = () => {
   const [inputValue, setInputValue] = useState("");
   const terminalRef = useRef(null);
   const effectRun = useRef(false);
-  const helpCommand = "Available commands: help, clear, date, whoami";
+  const helpCommand = [
+    "info",
+    "test",
+    "setleverage <int>: sets leverage value",
+    "setmargin ISOLATED or CROSS",
+    "setstoploss <float>: sets stop loss percent (0.02)",
+    "setusdt <int>: sets usdt value to use in position",
+    "<coin> <leverage> (create long position)",
+    "deletekeys: clears binance keys to set again",
+  ];
 
   const [history, setHistory] = useState([
     {
       input: "Welcome to TradeHub",
-      output: "Type help for available commands",
+      output: ["Type help for available commands"],
     },
   ]);
 
@@ -29,23 +38,25 @@ const TerminalScreen = () => {
     if (effectRun.current === false) {
       const fetchData = async () => {
         try {
-          const response = await fetch("/check");
+          const response = await fetch("http://localhost:5000/check", {
+            method: "POST",
+          });
+
           if (response.ok) {
-            const data = await response.json();
             setHistory((prevHistory) => [
               ...prevHistory,
-              { input: "GET /check", output: JSON.stringify(data) },
+              { input: "GET /check", output: "Binance bağlantı başarılı" },
             ]);
           } else {
             setHistory((prevHistory) => [
               ...prevHistory,
-              { input: "GET /check", output: `Error: ${response.statusText}` },
+              { input: "GET /check", output: `Error: keyleri kontrol et` },
             ]);
           }
         } catch (error) {
           setHistory((prevHistory) => [
             ...prevHistory,
-            { input: "GET /check", output: `Error: ${error.message}` },
+            { input: "GET /check", output: `Error: server hatası` },
           ]);
         }
       };
@@ -86,23 +97,61 @@ const TerminalScreen = () => {
    * - whoami: Show the current user.
    */
   const processCommand = async (command) => {
-    let resp = "";
-    if (command === "clear") {
-      setHistory([]);
-      return "";
-    } else if (command === "help") {
-      return helpCommand;
-    } else if (command === "whoami") {
-      return "user@localhost";
+    // Komutları yönetebileceğimiz bir nesne yapısı
+    const commandHandlers = {
+      clear: () => {
+        setHistory([]);
+        return "";
+      },
+      help: () => {
+        return helpCommand;
+      },
+      whoami: () => {
+        return "user@localhost";
+      },
+      test: () => {
+        const items = ["TESTED1", "TESTED2", "TESTED3", "TESTED4", "TESTED5"];
+        return items;
+      },
+      info: async () => {
+        return await handleServerCall("http://localhost:5000/info", "GET");
+      },
+      setleverage: (args) => {
+        const leverage = args[0];
+
+        return handleServerCall("http://localhost:5000/_setLeverage", "POST", {
+          leverage: leverage,
+        });
+      },
+      setmargin: (args) => {
+        const margin = args[0];
+
+        return handleServerCall("http://localhost:5000/_setMargin", "POST", {
+          margin: margin,
+        });
+      },
+      deletekeys: () => {
+        return handleServerCall("http://localhost:5000/_deleteKeys", "POST");
+      },
+    };
+
+    // Komutları kontrol et
+    const commandParts = command.split(" ");
+    const mainCommand = commandParts[0];
+    const args = commandParts.slice(1); // Komutun geri kalan kısmı (args)
+
+    // Komutlar nesnesinde ilgili komut var mı diye kontrol et
+    if (commandHandlers[mainCommand]) {
+      // Eğer varsa, ilgili handler'ı çalıştır
+      return await commandHandlers[mainCommand](args);
     }
 
-    try {
-      const [symbol, leverage] = command.split(" ");
-      if (!symbol || !leverage) {
-        return "Invalid command. Example: 'btc 10'";
-      }
-
-      // Backend'e POST isteği gönder
+    // Genel komut işlemesi (örneğin, "btc 10" gibi)
+    // Bu kısımda kullanıcı "btc 10" veya "xlm 15" gibi komutlar girerse, bunları burada işleyebilirsiniz
+    const [symbol, leverage] = command.split(" ");
+    let resp = "";
+    if (symbol && leverage) {
+      // Burada belirli bir işlem gerçekleştirebilirsiniz
       const response = await fetch("http://localhost:5000/command", {
         method: "POST",
         headers: {
@@ -113,15 +162,35 @@ const TerminalScreen = () => {
 
       if (response.ok) {
         const result = await response.json();
-        resp = `Position opened: ${JSON.stringify(result)}`;
+        resp = result.message; // ${JSON.stringify(result)}`;
       } else {
-        resp = `Error: ${response.statusText}`;
+        resp = response.error;
       }
-    } catch (error) {
-      resp = `Error: ${error.message}`;
+
+      return resp;
+      return `Processed command for ${symbol} with leverage ${leverage}`;
     }
 
-    return resp;
+    return `Invalid command: ${command}`;
+  };
+
+  const handleServerCall = async (link, method, msg) => {
+    try {
+      const response = await fetch(link, {
+        method: method,
+        body: JSON.stringify(msg), // JSON formatında backend'e gönder
+      });
+
+      const data = await response.json();
+      console.log(data);
+      if (response.ok) {
+        return data.message;
+      } else {
+        return data.error;
+      }
+    } catch (error) {
+      return "Error: server hatası";
+    }
   };
 
   /**
@@ -174,7 +243,20 @@ const TerminalScreen = () => {
               <span className="ml-2 text-white text-sm">{entry.input}</span>
             </div>
             {entry.output && (
-              <div className="ml-4 text-green-300 text-sm">{entry.output}</div>
+              <div className="ml-4 text-green-300 text-sm">
+                {/* Eğer output bir dizi ise, her elemanı alt alta listele */}
+                {Array.isArray(entry.output) ? (
+                  <ul className="list-disc pl-5">
+                    {entry.output.map((item, itemIndex) => (
+                      <li key={itemIndex} className="text-sm text-green-300">
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span>{entry.output}</span>
+                )}
+              </div>
             )}
           </div>
         ))}
