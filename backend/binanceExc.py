@@ -183,7 +183,7 @@ class BinanceExchange:
     
     def __str__(self):
         temp = [
-            f"StopLossRatio: {self.STOP_LOSS_PERCENT}", 
+            f"StopLossRatio: {int(self.STOP_LOSS_PERCENT*100)}%", 
             f"MarginType: {self.MARGIN_TYPE}", 
             f"Leverage: {self.LEVERAGE}", 
             f"Usd Amount: {self.USD_AMOUNT}"

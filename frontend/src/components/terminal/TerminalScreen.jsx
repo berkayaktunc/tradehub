@@ -130,6 +130,13 @@ const TerminalScreen = () => {
           margin: margin,
         });
       },
+      setstoploss: (args) => {
+        const stoploss = args[0];
+
+        return handleServerCall("http://localhost:5000/_setStoploss", "POST", {
+          stoploss: stoploss,
+        });
+      },
       deletekeys: () => {
         return handleServerCall("http://localhost:5000/_deleteKeys", "POST");
       },
@@ -168,7 +175,6 @@ const TerminalScreen = () => {
       }
 
       return resp;
-      return `Processed command for ${symbol} with leverage ${leverage}`;
     }
 
     return `Invalid command: ${command}`;
@@ -178,11 +184,14 @@ const TerminalScreen = () => {
     try {
       const response = await fetch(link, {
         method: method,
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(msg), // JSON formatında backend'e gönder
       });
 
       const data = await response.json();
-      console.log(data);
+
       if (response.ok) {
         return data.message;
       } else {

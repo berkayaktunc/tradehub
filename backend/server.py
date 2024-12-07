@@ -54,7 +54,7 @@ def position():
 
 
 @app.route('/info', methods=['GET'])
-def short_position():
+def get_info():
     msg = bn.__str__()
 
     return jsonify({'message': msg}), 200
@@ -62,34 +62,63 @@ def short_position():
 @app.route('/_setLeverage', methods=['GET','POST'])
 def setLev():
     data = request.get_json()
-    leverage = str(data.get('leverage'))
-     
-    msg = bn._set_LEVERAGE(leverage)
-    return jsonify({'message': [msg]}), 200
-    """
+    leverage = data.get('leverage')
 
-    print(f"GELEN DEGER:  {leverage}")
-    bn._set_ENV_VAL("LEVERAGE", leverage)
-    load_dotenv()
-    print("GEÇTIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII")
-    print(f"{str(leverage)} == {str(bn._get_ENV_VAR("LEVERAGE"))}")
-
-    if ( str(leverage) == str(bn._get_ENV_VAR("LEVERAGE"))):
-        return jsonify({'message': [f"Leverage set to: {leverage}"]}), 200
+    if leverage is None:
+        return jsonify({'error': ['Leverage parameter is missing']}), 400
     
-    return jsonify({'error': ["Could not set leverage"]}), 400
-    """
+    try:
+        leverage = int(leverage)
+        if leverage > 75 or leverage < 1:
+            return jsonify({'error': ['Leverage must be 75<=leverage<=1']}), 400
+        
+        msg = bn._set_LEVERAGE(leverage)
+        return jsonify({'message': [msg]}), 200
+    except ValueError:
+        return jsonify({'error': ['Leverage must be a valid integer']}), 400
+    except Exception as e:
+        return jsonify({'error': [f'error: {e}']}), 400
 
-@app.route('/_setMargin', methods=['POST'])
-def setMarg():
+
+@app.route('/_setStoploss', methods=['GET','POST'])
+def setStoploss():
     data = request.get_json()
-    margin = str(data.get('margin')).upper()
-    test = ["ISOLATED", "CROSS"]
-    if margin not in test:
-        return jsonify({'message': "Margin shold be ISOLATED or CROSS"}), 200
-    msg = bn._set_MARGIN_TYPE(margin)
+    stoploss = data.get('stoploss')
+
+    if stoploss is None:
+        return jsonify({'error': ['stoploss parameter is missing']}), 400
     
-    return jsonify({'message': [msg]}), 200
+    try:
+        stoploss = int(stoploss)
+        if stoploss > 100 or stoploss < 1:
+            return jsonify({'error': ['stoploss must be 100<=stoploss<=1']}), 400
+        
+        msg = bn._set_STOP_LOSS_PERCENT(float(stoploss/100))
+        return jsonify({'message': [msg]}), 200
+    except ValueError:
+        return jsonify({'error': ['stoploss must be a valid integer']}), 400
+    except Exception as e:
+        return jsonify({'error': [f'error: {e}']}), 400
+
+
+@app.route('/_setMargin', methods=['GET','POST'])
+def setMarg():
+    test = ["ISOLATED", "CROSS"]
+    data = request.get_json()
+    margin = data.get('margin')
+
+    if (margin is None or margin.upper() not in test):
+        return jsonify({'error': ['Margin parameter is missing or should be ISOLATED or CROSS.']}), 400
+
+    try:
+        margin = margin.upper()
+        msg = bn._set_MARGIN_TYPE(margin)
+
+        return jsonify({'message': [msg]}), 200
+    except ValueError:
+        return jsonify({'error': ['Margin must be a valid string']}), 400
+    except Exception as e:
+        return jsonify({'error': [f'error: {e}']}), 400
 
 
 @app.route('/_deleteKeys', methods=['POST'])
