@@ -59,9 +59,12 @@ class BinanceExchange:
                 #return "Bağlantıda bir sorun var"
         except Exception as e:
             return ["Error: Geçersiz JSON verisi", e], 400
+        
+    def flip_side(self, side):
+        return "BUY" if side == "SELL" else "SELL"
 
 
-    def create_position(self, symbol, leverage, usdt_amount=None):
+    def create_position(self, symbol, leverage, side, usdt_amount=None):
         try:
             symbol = self.get_full_symbol(symbol)
             usdt_amount = usdt_amount or self.USD_AMOUNT
@@ -89,7 +92,7 @@ class BinanceExchange:
 
             order = self.client.new_order(
                 symbol=symbol,
-                side="BUY",  # Long işlem için "BUY", short işlem için "SELL" seç
+                side=side,
                 type="MARKET",
                 quantity=quantity,
             )
@@ -101,29 +104,39 @@ class BinanceExchange:
         except ClientError as error:
             return ["Cannot create position",f"{error.error_message}"], 0
 
-    def create_stoploss(self, symbol, order_id=None):
+    def create_stoploss(self, symbol, side, order_id=None):
         try:
             symbol = self.get_full_symbol(symbol)
 
             price = float(self.client.mark_price(symbol=symbol)["markPrice"])
             price_precision = self.get_price_precision(symbol)
-            stop_loss_price = round(price - price*self.STOP_LOSS_PERCENT, price_precision)
+            #stop_loss_price = round(price - price*self.STOP_LOSS_PERCENT, price_precision)
+
+            # calculate stoploss according to price and side
+            if side == "BUY":
+                stop_loss_price = round(price - price * self.STOP_LOSS_PERCENT, price_precision)
+            elif side == "SELL":
+                stop_loss_price = round(price + price * self.STOP_LOSS_PERCENT, price_precision)
+            else:
+                raise ValueError("Invalid side value. It should be 'buy' or 'short'.")
 
             # StopLoss pozisyon açma
             stop_loss_order = self.client.new_order(
                 symbol=symbol,
-                side="SELL",
+                side=self.flip_side(side),
                 type="STOP_MARKET", 
                 stopPrice=round(stop_loss_price, price_precision),
                 # quantity=quantity,    # stop_market ile gönderilmemeliymiş
                 closePosition=True,     # TODO: denenmedi
                 orderId=order_id
             )
-
+            
             return 1, f"Stop loss price: {stop_loss_price}"
 
         except ClientError as error:
             return 0, ["Error: stoploss not created",f"{error.error_message}"]
+        except Exception as e:
+            return 0, ["Error: stoploss not created",f"{e}"]
     
     def get_leverage(self, symbol):
         try:

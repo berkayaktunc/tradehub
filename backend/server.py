@@ -39,14 +39,18 @@ def position():
     data = request.get_json()
     symbol = data.get('symbol').upper()
     leverage = int(data.get('leverage'))
+    side = "BUY"
 
-    msg1, order_id = bn.create_position(symbol, leverage)
+    if leverage < 0:
+        side = "SELL"
+
+    msg1, order_id = bn.create_position(symbol, side ,leverage)
     if order_id == 0:
         return jsonify({'message': [msg1]}), 200
 
     time.sleep(0.5)
 
-    flag, msg2 = bn.create_stoploss(symbol, order_id)
+    flag, msg2 = bn.create_stoploss(symbol, side, order_id)
     if flag == 0:
         return jsonify({'message': [msg1, msg2]}), 200
     
