@@ -1,4 +1,8 @@
+import { useTradeContext } from "../context/TradeContext";
+
 function PreDefined() {
+  const { executeTradeCommand } = useTradeContext();
+  
   const data = [
     ["btc", "20", "50", "20", "50"],
     ["eth", "20", "50", "20", "50"],
@@ -21,40 +25,8 @@ function PreDefined() {
   );
 
   const handleClick = async (currency, leverage, flag) => {
-    if (flag === "short") {
-      // TODO: json ve istek atma birarada örnek olarak bırakıldı. backenden göre düzenle.
-      const response = await fetch(
-        `http://localhost:5000/short?coin=${currency}&leverage=${leverage}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ symbol: symbol, leverage: leverage }), // JSON formatında backend'e gönder
-        }
-      );
-      responseHandler(response);
-    } else {
-      const response = await fetch(
-        `http://localhost:5000/long?coin=${currency}&leverage=${leverage}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ symbol: symbol, leverage: leverage }), // JSON formatında backend'e gönder
-        }
-      );
-      responseHandler(response);
-    }
-  };
-
-  const responseHandler = (req) => {
-    if (req.ok) {
-      console.log("Success");
-    } else {
-      console.log("Error");
-    }
+    // Context üzerinden trade command'ı çalıştır
+    await executeTradeCommand(currency, leverage, flag);
   };
 
   const btred = "bg-[#490909]";

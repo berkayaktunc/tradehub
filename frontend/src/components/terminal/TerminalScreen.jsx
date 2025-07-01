@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import { allCommands } from "./commands";
+import { useTradeContext } from "../../context/TradeContext";
 
 const TerminalScreen = () => {
   const [inputValue, setInputValue] = useState("");
   const terminalRef = useRef(null);
   const effectRun = useRef(false);
+  const { terminalHistory, addToTerminalHistory, clearTerminalHistory } = useTradeContext();
+  
   const helpCommand = [
     "info",
     "test",
@@ -16,13 +19,6 @@ const TerminalScreen = () => {
     "deletekeys: clears binance keys to set again",
   ];
 
-  const [history, setHistory] = useState([
-    {
-      input: "Welcome to TradeHub",
-      output: ["Type help for available commands"],
-    },
-  ]);
-
   const handleInputChange = (e) => {
     setInputValue(e.target.value);
   };
@@ -31,7 +27,7 @@ const TerminalScreen = () => {
     if (terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
-  }, [history]);
+  }, [terminalHistory]);
 
   useEffect(() => {
     // Prevent double-calling in development
@@ -43,21 +39,12 @@ const TerminalScreen = () => {
           });
 
           if (response.ok) {
-            setHistory((prevHistory) => [
-              ...prevHistory,
-              { input: "GET /check", output: "Binance bağlantı başarılı" },
-            ]);
+            addToTerminalHistory("GET /check", "Binance bağlantı başarılı");
           } else {
-            setHistory((prevHistory) => [
-              ...prevHistory,
-              { input: "GET /check", output: `Error: keyleri kontrol et` },
-            ]);
+            addToTerminalHistory("GET /check", "Error: keyleri kontrol et");
           }
         } catch (error) {
-          setHistory((prevHistory) => [
-            ...prevHistory,
-            { input: "GET /check", output: `Error: server hatası` },
-          ]);
+          addToTerminalHistory("GET /check", "Error: server hatası");
         }
       };
 
@@ -68,7 +55,7 @@ const TerminalScreen = () => {
     return () => {
       effectRun.current = true;
     };
-  }, []);
+  }, [addToTerminalHistory]);
 
   // Check if the submitted command filled or not
   const handleSubmit = async () => {
@@ -76,12 +63,7 @@ const TerminalScreen = () => {
 
     const output = await processCommand(inputValue);
 
-    const newEntry = {
-      input: inputValue,
-      output: output,
-    };
-
-    setHistory((prevHistory) => [...prevHistory, newEntry]);
+    addToTerminalHistory(inputValue, output);
     setInputValue("");
   };
 
@@ -100,7 +82,7 @@ const TerminalScreen = () => {
     // Komutları yönetebileceğimiz bir nesne yapısı
     const commandHandlers = {
       clear: () => {
-        setHistory([]);
+        clearTerminalHistory();
         return "";
       },
       help: () => {
@@ -245,7 +227,7 @@ const TerminalScreen = () => {
         ref={terminalRef}
         className="history-section h-[75vh] overflow-y-auto bg-[#1a1a1a] p-2 rounded-lg mb-2 text-xs"
       >
-        {history.map((entry, index) => (
+        {terminalHistory.map((entry, index) => (
           <div key={index} className="mb-1">
             <div>
               <span className="text-green-500 text-sm">➜</span>
