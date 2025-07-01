@@ -2,19 +2,28 @@ import TradeHubLogo from "./assets/TradeHubLogo";
 import PreDefined from "./components/PreDefined";
 import TerminalScreen from "./components/terminal/TerminalScreen";
 import { TradeProvider } from "./context/TradeContext";
+import { useState } from "react";
 
 function App() {
+  const [showSettings, setShowSettings] = useState(false);
+
   return (
     <TradeProvider>
       <div className="h-screen flex flex-col">
         {/* Header */}
-        <header className="h-[7%] bg-black text-white flex items-center justify-center border-b-2 border-red-600">
+        <header className="h-[7%] bg-black text-white flex items-center justify-center border-b-2 border-red-600 relative">
           <TradeHubLogo />
+          <button
+            onClick={() => setShowSettings(true)}
+            className="absolute right-4 bg-gray-700 hover:bg-gray-600 p-2 rounded-lg transition-colors"
+          >
+            <span className="text-3xl text-red-500 hover:text-red-400">⚙️</span>
+          </button>
         </header>
 
         {/* Sidebar */}
         <div className="h-[10%] bg-gray-800 text-white flex items-center justify-center ">
-          <PreDefined />
+          <PreDefined showSettings={showSettings} setShowSettings={setShowSettings} />
         </div>
 
         <div className="flex flex-1">
