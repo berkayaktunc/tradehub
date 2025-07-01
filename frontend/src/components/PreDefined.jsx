@@ -101,6 +101,24 @@ function PreDefined({ showSettings, setShowSettings }) {
     }
   };
 
+  const checkConnection = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/check", {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert("✅ Bağlantı başarılı! API key'ler doğru.");
+      } else {
+        const errorData = await response.json();
+        alert(`❌ Bağlantı hatası: ${errorData.error || "API key'leri kontrol edin"}`);
+      }
+    } catch (error) {
+      alert(`❌ Bağlantı hatası: ${error.message}`);
+    }
+  };
+
   const btred = "bg-[#490909]";
   const btgreen = "bg-green-950";
 
@@ -265,6 +283,12 @@ function PreDefined({ showSettings, setShowSettings }) {
                       className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white text-sm"
                     >
                       💾 Save Keys
+                    </button>
+                    <button
+                      onClick={checkConnection}
+                      className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-white text-sm"
+                    >
+                      🔍 Check Connection
                     </button>
                     <button
                       onClick={fetchKeys}
