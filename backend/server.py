@@ -134,5 +134,51 @@ def delete_ENV():
     return jsonify({'message': [msg]}), 200
 
 
+@app.route('/_saveKeys', methods=['POST'])
+def save_keys():
+    data = request.get_json()
+    api_key = data.get('api_key')
+    secret_key = data.get('secret_key')
+
+    if not api_key or not secret_key:
+        return jsonify({'error': ['API Key ve Secret Key gereklidir']}), 400
+
+    try:
+        # API key'leri .env dosyasına kaydet
+        flag, msg = bn._set_ENV_VAL('BINANCE_API_KEY', api_key)
+        if flag == 0:
+            return jsonify({'error': [msg]}), 400
+        
+        flag, msg = bn._set_ENV_VAL('BINANCE_SECRET_KEY', secret_key)
+        if flag == 0:
+            return jsonify({'error': [msg]}), 400
+
+        # Binance client'ı yeniden başlat
+        bn.__init__()
+        
+        return jsonify({'message': ['API key\'ler başarıyla kaydedildi']}), 200
+    except Exception as e:
+        return jsonify({'error': [f'Hata: {e}']}), 400
+
+
+@app.route('/_getKeys', methods=['GET'])
+def get_keys():
+    try:
+        api_key = bn._get_ENV_VAR('BINANCE_API_KEY')
+        secret_key = bn._get_ENV_VAR('BINANCE_SECRET_KEY')
+        
+        # API key'lerin sadece ilk 4 karakterini göster
+        masked_api_key = api_key[:4] + '*' * (len(api_key) - 8) + api_key[-4:] if api_key else ''
+        masked_secret_key = secret_key[:4] + '*' * (len(secret_key) - 8) + secret_key[-4:] if secret_key else ''
+        
+        return jsonify({
+            'api_key': masked_api_key,
+            'secret_key': masked_secret_key,
+            'has_keys': bool(api_key and secret_key)
+        }), 200
+    except Exception as e:
+        return jsonify({'error': [f'Hata: {e}']}), 400
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
