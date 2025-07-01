@@ -180,5 +180,14 @@ def get_keys():
         return jsonify({'error': [f'Hata: {e}']}), 400
 
 
+@app.route('/open_orders', methods=['GET'])
+def open_orders():
+    try:
+        orders = bn.get_open_orders()
+        return jsonify({'orders': orders}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

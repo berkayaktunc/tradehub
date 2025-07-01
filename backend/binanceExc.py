@@ -2,6 +2,7 @@ from binance.um_futures import UMFutures
 from binance.error import ClientError
 from dotenv import load_dotenv, set_key
 import os
+from datetime import datetime
 
 # .env dosyasını yükleyin
 load_dotenv()
@@ -227,6 +228,35 @@ class BinanceExchange:
     def _get_ENV_VAR(self, key):
         load_dotenv()
         return os.getenv(key)
+
+    def get_open_orders(self):
+        try:
+            open_orders = self.client.get_open_orders()
+            formatted = []
+            for order in open_orders:
+                # Zamanı okunabilir formata çevir
+                ts = order.get('updateTime') or order.get('time')
+                if ts:
+                    time_str = datetime.fromtimestamp(ts/1000).strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    time_str = ''
+                formatted.append({
+                    'time': time_str,
+                    'symbol': order.get('symbol'),
+                    'type': order.get('type'),
+                    'side': order.get('side'),
+                    'price': order.get('price'),
+                    'amount': f"{order.get('origQty')} USDT",
+                    'filled': f"{order.get('executedQty')} USDT",
+                    'reduceOnly': 'Yes' if order.get('reduceOnly', False) else 'No',
+                    'postOnly': 'Yes' if order.get('closePosition', False) else 'No',
+                    'trigger': order.get('stopPrice') and f"Last Price <= {order.get('stopPrice')}" or '',
+                    'tpsl': '--',
+                    'tif': order.get('timeInForce'),
+                })
+            return formatted
+        except Exception as e:
+            raise e
 
 
 

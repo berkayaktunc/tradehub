@@ -3,6 +3,7 @@ import PreDefined from "./components/PreDefined";
 import TerminalScreen from "./components/terminal/TerminalScreen";
 import { TradeProvider } from "./context/TradeContext";
 import { useState } from "react";
+import OpenOrders from "./components/OpenOrders";
 
 function App() {
   const [showSettings, setShowSettings] = useState(false);
@@ -35,8 +36,10 @@ function App() {
             </section>
 
             {/* Islemler */}
-            <section className="h-[30%] bg-red-800 text-white flex items-center justify-center">
-              İŞLEMLEERRRR
+            <section className="h-[30%] text-white flex items-center justify-center">
+              <div className="w-full h-full flex items-center justify-center">
+                <OpenOrders />
+              </div>
             </section>
           </main>
 
