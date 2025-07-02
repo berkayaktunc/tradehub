@@ -4,9 +4,11 @@ import TerminalScreen from "./components/terminal/TerminalScreen";
 import { TradeProvider } from "./context/TradeContext";
 import { useState } from "react";
 import OpenOrders from "./components/OpenOrders";
+import ConnectWallet from "./components/ConnectWallet";
 
 function App() {
   const [showSettings, setShowSettings] = useState(false);
+  const [wallet, setWallet] = useState("");
 
   return (
     <TradeProvider>
@@ -14,6 +16,9 @@ function App() {
         {/* Header */}
         <header className="h-[7%] bg-black text-white flex items-center justify-center border-b-2 border-red-600 relative">
           <TradeHubLogo />
+          <div className="absolute right-24 flex items-center">
+            <ConnectWallet onConnected={(address) => setWallet(address)} />
+          </div>
           <button
             onClick={() => setShowSettings(true)}
             className="absolute right-4 bg-gray-700 hover:bg-gray-600 p-2 rounded-lg transition-colors"
@@ -36,7 +41,7 @@ function App() {
             </section>
 
             {/* Islemler */}
-            <section className="h-[30%] text-white flex items-center justify-center">
+            <section className="h-[30%] bg-red-800 text-white flex items-center justify-center">
               <div className="w-full h-full flex items-center justify-center">
                 <OpenOrders />
               </div>

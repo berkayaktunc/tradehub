@@ -3,6 +3,7 @@ from flask_cors import CORS
 from binanceExc import BinanceExchange as binance
 import time
 from models import db, User
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tradehub.db'
@@ -211,5 +212,36 @@ def connect_wallet():
         return jsonify({'message': 'Wallet already connected', 'user_id': user.id}), 200
 
 
+@app.route('/api/subscription_status', methods=['POST'])
+def subscription_status():
+    data = request.get_json()
+    wallet_address = data.get('wallet_address')
+    if not wallet_address:
+        return jsonify({'error': 'Wallet address is required'}), 400
+
+    user = User.query.filter_by(wallet_address=wallet_address).first()
+    if not user:
+        return jsonify({'active': False, 'message': 'User not found'}), 404
+
+    now = datetime.utcnow()
+    if user.subscription_end and user.subscription_end > now:
+        return jsonify({'active': True, 'subscription_end': user.subscription_end.isoformat()}), 200
+    else:
+        return jsonify({'active': False, 'message': 'Subscription inactive or expired'}), 200
+
+
+@app.route('/api/grant_60_days', methods=['POST'])
+def grant_60_days():
+    wallet_address = "0x387f2d07ec8717731db5c2ac9f02b0bc3f75d129"
+    user = User.query.filter_by(wallet_address=wallet_address).first()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    now = datetime.utcnow()
+    user.subscription_start = now
+    user.subscription_end = now + timedelta(days=60)
+    db.session.commit()
+    return jsonify({'message': '60 days granted'}), 200
+
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5050)
