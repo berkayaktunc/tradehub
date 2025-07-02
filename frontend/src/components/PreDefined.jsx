@@ -88,7 +88,7 @@ function PreDefined({ showSettings, setShowSettings }) {
     }
   };
 
-  // Trade data'yı kaydet
+  // Trade data'yı kaydet (sessiz kaydetme)
   const saveTradeData = async () => {
     if (!walletAddress) return;
     
@@ -103,13 +103,13 @@ function PreDefined({ showSettings, setShowSettings }) {
       });
       
       if (response.ok) {
-        alert('Trade data kaydedildi!');
+        console.log('Trade data otomatik kaydedildi');
       } else {
         const error = await response.json();
-        alert(`Hata: ${error.error}`);
+        console.error('Kaydetme hatası:', error.error);
       }
     } catch (error) {
-      alert('Trade data kaydedilemedi: ' + error.message);
+      console.error('Trade data kaydedilemedi:', error.message);
     }
   };
 
@@ -171,11 +171,11 @@ function PreDefined({ showSettings, setShowSettings }) {
     }
   }, [showSettings]);
 
-  // ESC tuşu ile settings kapatma
+  // ESC tuşu ile settings kapatma ve otomatik kaydetme
   useEffect(() => {
     const handleEscKey = (event) => {
       if (event.key === 'Escape' && showSettings) {
-        setShowSettings(false);
+        handleSettingsClose();
       }
     };
 
@@ -187,6 +187,21 @@ function PreDefined({ showSettings, setShowSettings }) {
       document.removeEventListener('keydown', handleEscKey);
     };
   }, [showSettings, setShowSettings]);
+
+  // Settings kapatma fonksiyonu (otomatik kaydetme ile)
+  const handleSettingsClose = async () => {
+    if (isConnected && walletAddress) {
+      try {
+        await saveTradeData();
+        setShowSettings(false);
+      } catch (error) {
+        console.error('Otomatik kaydetme hatası:', error);
+        setShowSettings(false);
+      }
+    } else {
+      setShowSettings(false);
+    }
+  };
 
   const loadApiKeys = async () => {
     if (!walletAddress) return;
@@ -323,15 +338,21 @@ function PreDefined({ showSettings, setShowSettings }) {
 
       {/* Settings Modal */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={handleSettingsClose}
+        >
+          <div 
+            className="bg-gray-800 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-xl font-bold text-white">Settings</h3>
                 <p className="text-sm text-gray-400 mt-1">ESC tuşu ile kapatabilirsiniz</p>
               </div>
               <button
-                onClick={() => setShowSettings(false)}
+                onClick={handleSettingsClose}
                 className="text-gray-400 hover:text-white text-2xl"
               >
                 ×
@@ -422,12 +443,7 @@ function PreDefined({ showSettings, setShowSettings }) {
                   >
                     Reset
                   </button>
-                  <button 
-                    onClick={saveTradeData}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
-                  >
-                    Save Data
-                  </button>
+
                   <button 
                     onClick={setAsDefault}
                     className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm"
