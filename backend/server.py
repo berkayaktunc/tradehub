@@ -2,8 +2,13 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from binanceExc import BinanceExchange as binance
 import time
+from models import db, User
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tradehub.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db.init_app(app)
+
 CORS(app)
 bn = binance()
 
@@ -187,6 +192,23 @@ def open_orders():
         return jsonify({'orders': orders}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/connect_wallet', methods=['POST'])
+def connect_wallet():
+    data = request.get_json()
+    wallet_address = data.get('wallet_address')
+    if not wallet_address:
+        return jsonify({'error': 'Wallet address is required'}), 400
+
+    user = User.query.filter_by(wallet_address=wallet_address).first()
+    if not user:
+        user = User(wallet_address=wallet_address)
+        db.session.add(user)
+        db.session.commit()
+        return jsonify({'message': 'Wallet connected and user created', 'user_id': user.id}), 201
+    else:
+        return jsonify({'message': 'Wallet already connected', 'user_id': user.id}), 200
 
 
 if __name__ == '__main__':
