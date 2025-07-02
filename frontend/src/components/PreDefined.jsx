@@ -132,7 +132,7 @@ function PreDefined({ showSettings, setShowSettings }) {
           >
             <h2 className="text-center font-bold">{currency.toUpperCase()}</h2>
 
-            <div className="grid grid-cols-2 gap-1 py-1">
+            <div className="grid grid-cols-2 gap-1 p-1">
               <div className={`p-2 ${btgreen}`}>
                 {renderButton(currency, long1, "long")}
               </div>
