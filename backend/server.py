@@ -4,6 +4,8 @@ from binanceExc import BinanceExchange as binance
 import time
 from models import db, User
 from datetime import datetime, timedelta
+from crypto_utils import encrypt_api_key, decrypt_api_key, encrypt_secret_key, decrypt_secret_key
+import json
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tradehub.db'
@@ -241,6 +243,182 @@ def grant_60_days():
     user.subscription_end = now + timedelta(days=60)
     db.session.commit()
     return jsonify({'message': '60 days granted'}), 200
+
+
+@app.route('/api/save_encrypted_keys', methods=['POST'])
+def save_encrypted_keys():
+    data = request.get_json()
+    wallet_address = data.get('wallet_address')
+    api_key = data.get('api_key')
+    secret_key = data.get('secret_key')
+
+    if not wallet_address or not api_key or not secret_key:
+        return jsonify({'error': 'Wallet address, API key ve Secret key gereklidir'}), 400
+
+    try:
+        user = User.query.filter_by(wallet_address=wallet_address).first()
+        if not user:
+            return jsonify({'error': 'Kullanıcı bulunamadı'}), 404
+
+        # API key'leri şifrele
+        encrypted_api = encrypt_api_key(api_key)
+        encrypted_secret = encrypt_secret_key(secret_key)
+
+        # Veritabanına kaydet
+        user.encrypted_api_key = encrypted_api
+        user.encrypted_secret_key = encrypted_secret
+        db.session.commit()
+
+        return jsonify({'message': 'API key\'ler güvenli şekilde kaydedildi'}), 200
+    except Exception as e:
+        return jsonify({'error': f'Hata: {e}'}), 500
+
+
+@app.route('/api/get_encrypted_keys', methods=['POST'])
+def get_encrypted_keys():
+    data = request.get_json()
+    wallet_address = data.get('wallet_address')
+
+    if not wallet_address:
+        return jsonify({'error': 'Wallet address gereklidir'}), 400
+
+    try:
+        user = User.query.filter_by(wallet_address=wallet_address).first()
+        if not user:
+            return jsonify({'error': 'Kullanıcı bulunamadı'}), 404
+
+        if not user.encrypted_api_key or not user.encrypted_secret_key:
+            return jsonify({'error': 'API key\'ler bulunamadı'}), 404
+
+        # API key'leri çöz
+        api_key = decrypt_api_key(user.encrypted_api_key)
+        secret_key = decrypt_secret_key(user.encrypted_secret_key)
+
+        if not api_key or not secret_key:
+            return jsonify({'error': 'API key\'ler çözülemedi'}), 500
+
+        # Masked olarak döndür (güvenlik için)
+        masked_api = api_key[:4] + '*' * (len(api_key) - 8) + api_key[-4:] if api_key else ''
+        masked_secret = secret_key[:4] + '*' * (len(secret_key) - 8) + secret_key[-4:] if secret_key else ''
+
+        return jsonify({
+            'api_key': masked_api,
+            'secret_key': masked_secret,
+            'has_keys': True
+        }), 200
+    except Exception as e:
+        return jsonify({'error': f'Hata: {e}'}), 500
+
+
+@app.route('/api/delete_encrypted_keys', methods=['POST'])
+def delete_encrypted_keys():
+    data = request.get_json()
+    wallet_address = data.get('wallet_address')
+
+    if not wallet_address:
+        return jsonify({'error': 'Wallet address gereklidir'}), 400
+
+    try:
+        user = User.query.filter_by(wallet_address=wallet_address).first()
+        if not user:
+            return jsonify({'error': 'Kullanıcı bulunamadı'}), 404
+
+        # API key'leri sil
+        user.encrypted_api_key = None
+        user.encrypted_secret_key = None
+        db.session.commit()
+
+        return jsonify({'message': 'API key\'ler silindi'}), 200
+    except Exception as e:
+        return jsonify({'error': f'Hata: {e}'}), 500
+
+
+@app.route('/api/save_trade_data', methods=['POST'])
+def save_trade_data():
+    data = request.get_json()
+    wallet_address = data.get('wallet_address')
+    trade_data = data.get('trade_data')
+
+    if not wallet_address or not trade_data:
+        return jsonify({'error': 'Wallet address ve trade data gereklidir'}), 400
+
+    try:
+        user = User.query.filter_by(wallet_address=wallet_address).first()
+        if not user:
+            return jsonify({'error': 'Kullanıcı bulunamadı'}), 404
+
+        # Trade data'yı JSON string olarak sakla
+        user.trade_data = json.dumps(trade_data)
+        db.session.commit()
+
+        return jsonify({'message': 'Trade data kaydedildi'}), 200
+    except Exception as e:
+        return jsonify({'error': f'Hata: {e}'}), 500
+
+
+@app.route('/api/get_trade_data', methods=['POST'])
+def get_trade_data():
+    data = request.get_json()
+    wallet_address = data.get('wallet_address')
+
+    if not wallet_address:
+        return jsonify({'error': 'Wallet address gereklidir'}), 400
+
+    try:
+        user = User.query.filter_by(wallet_address=wallet_address).first()
+        if not user:
+            return jsonify({'error': 'Kullanıcı bulunamadı'}), 404
+
+        if user.trade_data:
+            trade_data = json.loads(user.trade_data)
+            return jsonify({'trade_data': trade_data}), 200
+        else:
+            # Default data döndür
+            default_data = [
+                ["btc", "20", "50", "20", "50"],
+                ["eth", "20", "50", "20", "50"],
+                ["xrp", "20", "50", "20", "50"],
+                ["xlm", "20", "50", "20", "50"],
+                ["ada", "20", "50", "20", "50"],
+                ["sol", "20", "50", "20", "50"],
+                ["bnb", "20", "50", "20", "50"],
+                ["hbar", "20", "50", "20", "50"],
+            ]
+            return jsonify({'trade_data': default_data, 'is_default': True}), 200
+    except Exception as e:
+        return jsonify({'error': f'Hata: {e}'}), 500
+
+
+@app.route('/api/set_default_trade_data', methods=['POST'])
+def set_default_trade_data():
+    data = request.get_json()
+    wallet_address = data.get('wallet_address')
+
+    if not wallet_address:
+        return jsonify({'error': 'Wallet address gereklidir'}), 400
+
+    try:
+        user = User.query.filter_by(wallet_address=wallet_address).first()
+        if not user:
+            return jsonify({'error': 'Kullanıcı bulunamadı'}), 404
+
+        # Default data'yı kaydet
+        default_data = [
+            ["btc", "20", "50", "20", "50"],
+            ["eth", "20", "50", "20", "50"],
+            ["xrp", "20", "50", "20", "50"],
+            ["xlm", "20", "50", "20", "50"],
+            ["ada", "20", "50", "20", "50"],
+            ["sol", "20", "50", "20", "50"],
+            ["bnb", "20", "50", "20", "50"],
+            ["hbar", "20", "50", "20", "50"],
+        ]
+        user.trade_data = json.dumps(default_data)
+        db.session.commit()
+
+        return jsonify({'message': 'Default trade data kaydedildi', 'trade_data': default_data}), 200
+    except Exception as e:
+        return jsonify({'error': f'Hata: {e}'}), 500
 
 
 if __name__ == '__main__':

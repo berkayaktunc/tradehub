@@ -8,7 +8,6 @@ import ConnectWallet from "./components/ConnectWallet";
 
 function App() {
   const [showSettings, setShowSettings] = useState(false);
-  const [wallet, setWallet] = useState("");
 
   return (
     <TradeProvider>
@@ -17,7 +16,7 @@ function App() {
         <header className="h-[7%] bg-black text-white flex items-center justify-center border-b-2 border-red-600 relative">
           <TradeHubLogo />
           <div className="absolute right-24 flex items-center">
-            <ConnectWallet onConnected={(address) => setWallet(address)} />
+            <ConnectWallet />
           </div>
           <button
             onClick={() => setShowSettings(true)}

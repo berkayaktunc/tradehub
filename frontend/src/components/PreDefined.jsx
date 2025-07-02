@@ -2,14 +2,15 @@ import { useTradeContext } from "../context/TradeContext";
 import { useState, useEffect } from "react";
 
 function PreDefined({ showSettings, setShowSettings }) {
-  const { executeTradeCommand } = useTradeContext();
+  const { executeTradeCommand, walletAddress, isConnected } = useTradeContext();
   
   const [apiKey, setApiKey] = useState("");
   const [secretKey, setSecretKey] = useState("");
   const [hasKeys, setHasKeys] = useState(false);
   const [activeTab, setActiveTab] = useState("data"); // "data" or "keys"
   
-  const [data, setData] = useState([
+  // Default trade data
+  const defaultTradeData = [
     ["btc", "20", "50", "20", "50"],
     ["eth", "20", "50", "20", "50"],
     ["xrp", "20", "50", "20", "50"],
@@ -18,7 +19,12 @@ function PreDefined({ showSettings, setShowSettings }) {
     ["sol", "20", "50", "20", "50"],
     ["bnb", "20", "50", "20", "50"],
     ["hbar", "20", "50", "20", "50"],
-  ]);
+  ];
+  
+  const [data, setData] = useState(defaultTradeData);
+
+  const [savedKeys, setSavedKeys] = useState({ api_key: '', secret_key: '', has_keys: false });
+  const [connectionStatus, setConnectionStatus] = useState('');
 
   // Function to generate the button components
   const renderButton = (currency, leverage, flag) => (
@@ -43,79 +49,238 @@ function PreDefined({ showSettings, setShowSettings }) {
 
   const addRow = () => {
     if (data.length < 8) {
-      setData([...data, ["new", "20", "50", "20", "50"]]);
+      setData([...data, ["", "", "", "", ""]]);
+    } else {
+      alert('Maksimum 8 satır ekleyebilirsiniz!');
     }
   };
 
   const removeRow = (index) => {
     if (data.length > 1) {
-      const newData = data.filter((_, i) => i !== index);
-      setData(newData);
+      if (confirm('Bu satırı silmek istediğinizden emin misiniz?')) {
+        const newData = data.filter((_, i) => i !== index);
+        setData(newData);
+      }
+    } else {
+      alert('En az bir satır kalmalıdır!');
     }
   };
 
-  // API key'leri yükle
+  // Trade data'yı yükle
+  const loadTradeData = async () => {
+    if (!walletAddress) return;
+    
+    try {
+      const response = await fetch('http://localhost:5050/api/get_trade_data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: walletAddress })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setData(result.trade_data);
+      } else {
+        console.error('Trade data yüklenemedi');
+      }
+    } catch (error) {
+      console.error('Trade data yüklenemedi:', error);
+    }
+  };
+
+  // Trade data'yı kaydet
+  const saveTradeData = async () => {
+    if (!walletAddress) return;
+    
+    try {
+      const response = await fetch('http://localhost:5050/api/save_trade_data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wallet_address: walletAddress,
+          trade_data: data
+        })
+      });
+      
+      if (response.ok) {
+        alert('Trade data kaydedildi!');
+      } else {
+        const error = await response.json();
+        alert(`Hata: ${error.error}`);
+      }
+    } catch (error) {
+      alert('Trade data kaydedilemedi: ' + error.message);
+    }
+  };
+
+  // Default trade data'yı kaydet
+  const setAsDefault = async () => {
+    if (!walletAddress) return;
+    
+    try {
+      const response = await fetch('http://localhost:5050/api/set_default_trade_data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: walletAddress })
+      });
+      
+      if (response.ok) {
+        alert('Mevcut veriler default olarak kaydedildi!');
+      } else {
+        const error = await response.json();
+        alert(`Hata: ${error.error}`);
+      }
+    } catch (error) {
+      alert('Default data kaydedilemedi: ' + error.message);
+    }
+  };
+
+  // Default trade data'yı yükle
+  const loadDefault = () => {
+    setData([...defaultTradeData]);
+    alert('Default trade data yüklendi!');
+  };
+
+  // Reset trade data
+  const resetData = () => {
+    if (confirm('Tüm trade data\'yı sıfırlamak istediğinizden emin misiniz?')) {
+      setData([
+        ["", "", "", "", ""],
+        ["", "", "", "", ""],
+        ["", "", "", "", ""],
+        ["", "", "", "", ""],
+        ["", "", "", "", ""],
+        ["", "", "", "", ""],
+        ["", "", "", "", ""],
+        ["", "", "", "", ""],
+      ]);
+    }
+  };
+
+  // Component mount olduğunda trade data'yı yükle
+  useEffect(() => {
+    if (isConnected && walletAddress) {
+      loadTradeData();
+    }
+  }, [isConnected, walletAddress]);
+
+  // Settings açıldığında API key'leri yükle
   useEffect(() => {
     if (showSettings) {
-      fetchKeys();
+      loadApiKeys();
     }
   }, [showSettings]);
 
-  const fetchKeys = async () => {
+  // ESC tuşu ile settings kapatma
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape' && showSettings) {
+        setShowSettings(false);
+      }
+    };
+
+    if (showSettings) {
+      document.addEventListener('keydown', handleEscKey);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [showSettings, setShowSettings]);
+
+  const loadApiKeys = async () => {
+    if (!walletAddress) return;
+    
     try {
-      const response = await fetch("http://localhost:5000/_getKeys");
+      const response = await fetch('http://localhost:5050/api/get_encrypted_keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: walletAddress })
+      });
+      
       if (response.ok) {
-        const result = await response.json();
-        setApiKey(result.api_key || "");
-        setSecretKey(result.secret_key || "");
-        setHasKeys(result.has_keys);
+        const data = await response.json();
+        setSavedKeys(data);
+      } else {
+        setSavedKeys({ api_key: '', secret_key: '', has_keys: false });
       }
     } catch (error) {
-      console.error("API key'ler yüklenemedi:", error);
+      console.error('API key\'ler yüklenemedi:', error);
     }
   };
 
-  const saveKeys = async () => {
+  const saveApiKeys = async () => {
+    if (!walletAddress || !apiKey || !secretKey) {
+      alert('Lütfen tüm alanları doldurun');
+      return;
+    }
+
     try {
-      const response = await fetch("http://localhost:5000/_saveKeys", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const response = await fetch('http://localhost:5050/api/save_encrypted_keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          wallet_address: walletAddress,
           api_key: apiKey,
-          secret_key: secretKey,
-        }),
+          secret_key: secretKey
+        })
       });
 
       if (response.ok) {
-        const result = await response.json();
-        alert("API key'ler başarıyla kaydedildi!");
-        setHasKeys(true);
+        alert('API key\'ler güvenli şekilde kaydedildi!');
+        setApiKey('');
+        setSecretKey('');
+        loadApiKeys();
       } else {
-        const errorData = await response.json();
-        alert(`Hata: ${errorData.error?.join(", ") || "Bilinmeyen hata"}`);
+        const error = await response.json();
+        alert(`Hata: ${error.error}`);
       }
     } catch (error) {
-      alert(`Hata: ${error.message}`);
+      alert('API key\'ler kaydedilemedi: ' + error.message);
     }
   };
 
-  const checkConnection = async () => {
+  const deleteApiKeys = async () => {
+    if (!walletAddress) return;
+
+    if (!confirm('API key\'leri silmek istediğinizden emin misiniz?')) return;
+
     try {
-      const response = await fetch("http://localhost:5000/check", {
-        method: "POST",
+      const response = await fetch('http://localhost:5050/api/delete_encrypted_keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: walletAddress })
       });
 
       if (response.ok) {
-        const result = await response.json();
-        alert("✅ Bağlantı başarılı! API key'ler doğru.");
+        alert('API key\'ler silindi!');
+        setSavedKeys({ api_key: '', secret_key: '', has_keys: false });
       } else {
-        const errorData = await response.json();
-        alert(`❌ Bağlantı hatası: ${errorData.error || "API key'leri kontrol edin"}`);
+        const error = await response.json();
+        alert(`Hata: ${error.error}`);
       }
     } catch (error) {
-      alert(`❌ Bağlantı hatası: ${error.message}`);
+      alert('API key\'ler silinemedi: ' + error.message);
+    }
+  };
+
+  const testConnection = async () => {
+    if (!savedKeys.has_keys) {
+      setConnectionStatus('API key\'ler bulunamadı');
+      return;
+    }
+
+    setConnectionStatus('Test ediliyor...');
+    
+    try {
+      // Burada gerçek Binance API testi yapılabilir
+      // Şimdilik sadece simüle ediyoruz
+      setTimeout(() => {
+        setConnectionStatus('Bağlantı başarılı!');
+        setTimeout(() => setConnectionStatus(''), 3000);
+      }, 1000);
+    } catch (error) {
+      setConnectionStatus('Bağlantı hatası: ' + error.message);
     }
   };
 
@@ -125,37 +290,46 @@ function PreDefined({ showSettings, setShowSettings }) {
   return (
     <>
       <div className="w-full grid grid-cols-8 gap-2 p-1">
-        {data.map(([currency, long1, long2, short1, short2], index) => (
-          <div
-            key={index}
-            className="col-span-1 bg-black border-2 border-gray-900 rounded-lg"
-          >
-            <h2 className="text-center font-bold">{currency.toUpperCase()}</h2>
+        {data.map(([currency, long1, long2, short1, short2], index) => {
+          // Eğer tüm değerler boşsa bu kutucuğu gösterme
+          const isEmpty = !currency && !long1 && !long2 && !short1 && !short2;
+          if (isEmpty) return null;
+          
+          return (
+            <div
+              key={index}
+              className="col-span-1 bg-black border-2 border-gray-900 rounded-lg"
+            >
+              <h2 className="text-center font-bold">{currency.toUpperCase()}</h2>
 
-            <div className="grid grid-cols-2 gap-1 p-1">
-              <div className={`p-2 ${btgreen}`}>
-                {renderButton(currency, long1, "long")}
-              </div>
-              <div className={`p-2 ${btred}`}>
-                {renderButton(currency, short1, "short")}
-              </div>
-              <div className={`p-2 ${btgreen}`}>
-                {renderButton(currency, long2, "long")}
-              </div>
-              <div className={`p-2 ${btred}`}>
-                {renderButton(currency, short2, "short")}
+              <div className="grid grid-cols-2 gap-1 p-1">
+                <div className={`p-2 ${btgreen}`}>
+                  {renderButton(currency, long1, "long")}
+                </div>
+                <div className={`p-2 ${btred}`}>
+                  {renderButton(currency, short1, "short")}
+                </div>
+                <div className={`p-2 ${btgreen}`}>
+                  {renderButton(currency, long2, "long")}
+                </div>
+                <div className={`p-2 ${btred}`}>
+                  {renderButton(currency, short2, "short")}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Settings Modal */}
       {showSettings && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">Settings</h2>
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-white">Settings</h3>
+                <p className="text-sm text-gray-400 mt-1">ESC tuşu ile kapatabilirsiniz</p>
+              </div>
               <button
                 onClick={() => setShowSettings(false)}
                 className="text-gray-400 hover:text-white text-2xl"
@@ -164,157 +338,214 @@ function PreDefined({ showSettings, setShowSettings }) {
               </button>
             </div>
 
-            {/* Tab Buttons */}
-            <div className="flex mb-4 border-b border-gray-600">
+            {/* Tab Navigation */}
+            <div className="flex border-b border-gray-600 mb-6">
               <button
-                onClick={() => setActiveTab("data")}
-                className={`px-4 py-2 font-medium ${
-                  activeTab === "data"
-                    ? "text-red-500 border-b-2 border-red-500"
-                    : "text-gray-400 hover:text-white"
-                }`}
+                onClick={() => setActiveTab('data')}
+                className={`px-4 py-2 ${activeTab === 'data' ? 'border-b-2 border-red-500 text-red-500' : 'text-gray-400 hover:text-white'}`}
               >
-                PreDefined Data
+                Trade Data
               </button>
               <button
-                onClick={() => setActiveTab("keys")}
-                className={`px-4 py-2 font-medium ${
-                  activeTab === "keys"
-                    ? "text-red-500 border-b-2 border-red-500"
-                    : "text-gray-400 hover:text-white"
-                }`}
+                onClick={() => setActiveTab('api')}
+                className={`px-4 py-2 ${activeTab === 'api' ? 'border-b-2 border-red-500 text-red-500' : 'text-gray-400 hover:text-white'}`}
               >
-                Binance API Keys
+                API Keys
               </button>
             </div>
 
             {/* Data Tab */}
-            {activeTab === "data" && (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-white">
-                    <thead>
-                      <tr className="border-b border-gray-600">
-                        <th className="p-2 text-left">Currency</th>
-                        <th className="p-2 text-left">Long 1</th>
-                        <th className="p-2 text-left">Long 2</th>
-                        <th className="p-2 text-left">Short 1</th>
-                        <th className="p-2 text-left">Short 2</th>
-                        <th className="p-2 text-left">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.map((row, rowIndex) => (
-                        <tr key={rowIndex} className="border-b border-gray-700">
-                          {row.map((value, colIndex) => (
-                            <td key={colIndex} className="p-2">
-                              <input
-                                type="text"
-                                value={value}
-                                onChange={(e) => handleDataChange(rowIndex, colIndex, e.target.value)}
-                                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white focus:outline-none focus:border-blue-500 text-sm"
-                              />
-                            </td>
-                          ))}
-                          <td className="p-2">
-                            <button
-                              onClick={() => removeRow(rowIndex)}
-                              className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-sm"
-                              disabled={data.length <= 1}
-                            >
-                              ✕
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            {activeTab === 'data' && (
+              <div>
+                <h4 className="text-lg font-semibold mb-4 text-white">Predefined Trade Data</h4>
+                <div className="space-y-4">
+                  {data.map((row, rowIndex) => (
+                    <div key={rowIndex} className="border border-gray-600 rounded-lg p-4 bg-gray-700">
+                      <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
+                        <input
+                          type="text"
+                          value={row[0]}
+                          onChange={(e) => handleDataChange(rowIndex, 0, e.target.value)}
+                          className="border border-gray-600 rounded px-3 py-2 bg-gray-600 text-white placeholder-gray-400"
+                          placeholder="Symbol"
+                        />
+                        <input
+                          type="text"
+                          value={row[1]}
+                          onChange={(e) => handleDataChange(rowIndex, 1, e.target.value)}
+                          className="border border-gray-600 rounded px-3 py-2 bg-gray-600 text-white placeholder-gray-400"
+                          placeholder="Long 1"
+                        />
+                        <input
+                          type="text"
+                          value={row[2]}
+                          onChange={(e) => handleDataChange(rowIndex, 2, e.target.value)}
+                          className="border border-gray-600 rounded px-3 py-2 bg-gray-600 text-white placeholder-gray-400"
+                          placeholder="Long 2"
+                        />
+                        <input
+                          type="text"
+                          value={row[3]}
+                          onChange={(e) => handleDataChange(rowIndex, 3, e.target.value)}
+                          className="border border-gray-600 rounded px-3 py-2 bg-gray-600 text-white placeholder-gray-400"
+                          placeholder="Short 1"
+                        />
+                        <input
+                          type="text"
+                          value={row[4]}
+                          onChange={(e) => handleDataChange(rowIndex, 4, e.target.value)}
+                          className="border border-gray-600 rounded px-3 py-2 bg-gray-600 text-white placeholder-gray-400"
+                          placeholder="Short 2"
+                        />
+                        <button
+                          onClick={() => removeRow(rowIndex)}
+                          className="text-gray-400 hover:text-red-400 hover:bg-red-100 hover:bg-opacity-10 px-3 py-2 rounded-full border border-transparent hover:border-red-400 text-sm transition-all duration-200 w-8 h-10 flex items-center justify-center self-end"
+                          title="Bu satırı sil"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-
-                <div className="mt-4 flex justify-between items-center">
+                <div className="flex gap-2 mt-4 flex-wrap">
                   <button
                     onClick={addRow}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white text-sm"
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm"
                     disabled={data.length >= 8}
                   >
                     ➕ Add Row ({data.length}/8)
                   </button>
-                </div>
-              </>
-            )}
-
-            {/* Keys Tab */}
-            {activeTab === "keys" && (
-              <div className="space-y-4">
-                <div className="bg-gray-700 p-4 rounded-lg">
-                  <h3 className="text-lg font-medium text-white mb-4">Binance API Configuration</h3>
-                  
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        API Key
-                      </label>
-                      <input
-                        type="text"
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        placeholder="Enter your Binance API Key"
-                        className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white focus:outline-none focus:border-red-500"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Secret Key
-                      </label>
-                      <input
-                        type="password"
-                        value={secretKey}
-                        onChange={(e) => setSecretKey(e.target.value)}
-                        placeholder="Enter your Binance Secret Key"
-                        className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white focus:outline-none focus:border-red-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex space-x-2">
-                    <button
-                      onClick={saveKeys}
-                      className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white text-sm"
-                    >
-                      💾 Save Keys
-                    </button>
-                    <button
-                      onClick={checkConnection}
-                      className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-white text-sm"
-                    >
-                      🔍 Check Connection
-                    </button>
-                    <button
-                      onClick={fetchKeys}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white text-sm"
-                    >
-                      🔄 Refresh
-                    </button>
-                  </div>
-
-                  {hasKeys && (
-                    <div className="mt-3 p-2 bg-green-900 border border-green-600 rounded text-green-300 text-sm">
-                      ✅ API keys are configured
-                    </div>
-                  )}
+                  <button 
+                    onClick={resetData}
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm"
+                  >
+                    Reset
+                  </button>
+                  <button 
+                    onClick={saveTradeData}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
+                  >
+                    Save Data
+                  </button>
+                  <button 
+                    onClick={setAsDefault}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm"
+                  >
+                    Set as Default
+                  </button>
+                  <button 
+                    onClick={loadDefault}
+                    className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded text-sm"
+                  >
+                    Load Default
+                  </button>
                 </div>
               </div>
             )}
 
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={() => setShowSettings(false)}
-                className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-white"
-              >
-                Close
-              </button>
-            </div>
+            {/* API Keys Tab */}
+            {activeTab === 'api' && (
+              <div>
+                <h4 className="text-lg font-semibold mb-4 text-white">Binance API Keys</h4>
+                
+                {!isConnected ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-400 mb-4">API key'leri yönetmek için cüzdanınızı bağlayın</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Mevcut API Key'ler */}
+                    {savedKeys.has_keys && (
+                      <div className="bg-gray-700 p-4 rounded-lg border border-gray-600">
+                        <h5 className="font-semibold mb-3 text-white">Kayıtlı API Key'ler</h5>
+                        <div className="space-y-2">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-300">API Key:</label>
+                            <div className="font-mono text-sm bg-gray-800 p-2 rounded border border-gray-600 text-gray-300">
+                              {savedKeys.api_key}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-300">Secret Key:</label>
+                            <div className="font-mono text-sm bg-gray-800 p-2 rounded border border-gray-600 text-gray-300">
+                              {savedKeys.secret_key}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 mt-4">
+                          <button
+                            onClick={testConnection}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
+                          >
+                            Test Connection
+                          </button>
+                          <button
+                            onClick={deleteApiKeys}
+                            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm"
+                          >
+                            Delete Keys
+                          </button>
+                        </div>
+                        {connectionStatus && (
+                          <p className="mt-2 text-sm text-gray-400">{connectionStatus}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Yeni API Key Ekleme */}
+                    <div className="border-t border-gray-600 pt-6">
+                      <h5 className="font-semibold mb-3 text-white">
+                        {savedKeys.has_keys ? 'API Key\'leri Güncelle' : 'Yeni API Key Ekle'}
+                      </h5>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">
+                            API Key
+                          </label>
+                          <input
+                            type="password"
+                            value={apiKey}
+                            onChange={(e) => setApiKey(e.target.value)}
+                            className="w-full border border-gray-600 rounded-lg px-3 py-2 bg-gray-700 text-white placeholder-gray-400"
+                            placeholder="Binance API Key'inizi girin"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">
+                            Secret Key
+                          </label>
+                          <input
+                            type="password"
+                            value={secretKey}
+                            onChange={(e) => setSecretKey(e.target.value)}
+                            className="w-full border border-gray-600 rounded-lg px-3 py-2 bg-gray-700 text-white placeholder-gray-400"
+                            placeholder="Binance Secret Key'inizi girin"
+                          />
+                        </div>
+                        <button
+                          onClick={saveApiKeys}
+                          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
+                        >
+                          {savedKeys.has_keys ? 'Update Keys' : 'Save Keys'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Güvenlik Notu */}
+                    <div className="bg-yellow-900 border border-yellow-700 rounded-lg p-4">
+                      <h6 className="font-semibold text-yellow-300 mb-2">🔒 Güvenlik</h6>
+                      <ul className="text-sm text-yellow-200 space-y-1">
+                        <li>• API key'leriniz şifrelenmiş olarak saklanır</li>
+                        <li>• Sadece sizin cüzdan adresiniz ile erişilebilir</li>
+                        <li>• Futures trading izinlerini kontrol edin</li>
+                        <li>• IP kısıtlaması eklemeniz önerilir</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

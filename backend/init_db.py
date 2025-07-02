@@ -1,6 +1,5 @@
-from server import app
-from models import db
+from server import app, db
 
 with app.app_context():
     db.create_all()
-    print("Veritabanı ve tablolar oluşturuldu.") 
+    print("Database tabloları oluşturuldu!") 
