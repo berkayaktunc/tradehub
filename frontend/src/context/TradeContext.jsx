@@ -104,7 +104,7 @@ export const TradeProvider = ({ children }) => {
     const input = `${currency} ${leverageValue}`;
     
     try {
-              const response = await fetch("http://localhost:5050/command", {
+              const response = await fetch("http://localhost:8888/command", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

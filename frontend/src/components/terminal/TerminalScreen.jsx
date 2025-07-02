@@ -34,7 +34,7 @@ const TerminalScreen = () => {
     if (effectRun.current === false) {
       const fetchData = async () => {
         try {
-          const response = await fetch("http://localhost:5050/check", {
+          const response = await fetch("http://localhost:8888/check", {
             method: "POST",
           });
 
@@ -96,31 +96,31 @@ const TerminalScreen = () => {
         return items;
       },
       info: async () => {
-        return await handleServerCall("http://localhost:5050/info", "GET");
+        return await handleServerCall("http://localhost:8888/info", "GET");
       },
       setleverage: (args) => {
         const leverage = args[0];
 
-                  return handleServerCall("http://localhost:5050/_setLeverage", "POST", {
+                  return handleServerCall("http://localhost:8888/_setLeverage", "POST", {
           leverage: leverage,
         });
       },
       setmargin: (args) => {
         const margin = args[0];
 
-                  return handleServerCall("http://localhost:5050/_setMargin", "POST", {
+                  return handleServerCall("http://localhost:8888/_setMargin", "POST", {
           margin: margin,
         });
       },
       setstoploss: (args) => {
         const stoploss = args[0];
 
-                  return handleServerCall("http://localhost:5050/_setStoploss", "POST", {
+                  return handleServerCall("http://localhost:8888/_setStoploss", "POST", {
           stoploss: stoploss,
         });
       },
       deletekeys: () => {
-                  return handleServerCall("http://localhost:5050/_deleteKeys", "POST");
+                  return handleServerCall("http://localhost:8888/_deleteKeys", "POST");
       },
     };
 
@@ -141,7 +141,7 @@ const TerminalScreen = () => {
     let resp = "";
     if (symbol && leverage) {
       // Burada belirli bir işlem gerçekleştirebilirsiniz
-              const response = await fetch("http://localhost:5050/command", {
+              const response = await fetch("http://localhost:8888/command", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
